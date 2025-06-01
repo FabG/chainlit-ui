@@ -653,7 +653,12 @@ async def call_model_with_tools():
 ```
 
 
+To see an example of connecting to an MCP server via Chainlit:
+```bash
+chainlit run app/app_mcp.py
+```
 
+![mcp select](images/chainlit_mcp_select.png)
 
 ---
 ## Demo scripts
@@ -678,3 +683,4 @@ Input and Output:
 - [Chainlit Cookbook](https://github.com/Chainlit/cookbook)
 - [AWS Foundational LLM Chat with Chainlit](https://github.com/aws-samples/foundational-llm-chat)
 - [Building a chat app with chainlit and Bedrock](https://www.linkedin.com/pulse/building-chat-application-chainlit-amazon-bedrock-chris-kaspar-jq56c/)
+- [Creating an information retrieval chatbot](https://lablab.ai/t/agents-retrieval-chatbot)
