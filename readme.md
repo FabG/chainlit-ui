@@ -515,6 +515,145 @@ chainlit run app/app_task_list.py
 ![chainlist task list](images/chainlit_tasklist.png)
 
 
+## MCP Servers
+Model Control Protocol (MCP) allows you to integrate external tool providers with your Chainlit application. This enables your AI models to use tools through standardized interfaces.
+
+
+### Overview
+MCP provides a mechanism for Chainlit applications to connect to either server-sent events (SSE) based services or command-line (stdio) based tools. Once connected, your application can discover available tools, execute them, and integrate their responses into your application’s flow.
+
+### Connections Types
+Chainlit supports two types of MCP connections:
+
+- `SSE (Server-Sent Events)`: Connect to a remote service via HTTP
+- `stdio`: Execute a local command and communicate via standard I/O
+
+### Server-Side Configuration (config.toml)
+You can control which MCP connection types are enabled globally and restrict allowed stdio commands by modifying your project’s config.toml file (usually located at the root of your project or .chainlit/config.toml).
+
+Under the [features.mcp] section, you can configure SSE and stdio separately:
+
+```toml
+[features]
+# ... other feature flags
+
+[features.mcp.sse]
+    # Enable or disable the SSE connection type globally
+    enabled = true
+
+[features.mcp.stdio]
+    # Enable or disable the stdio connection type globally
+    enabled = true
+    # Define an allowlist of executables for the stdio type.
+    # Only the base names of executables listed here can be used.
+    # This is a crucial security measure for stdio connections.
+    # Example: allows running `npx ...` and `uvx ...` but blocks others.
+    allowed_executables = [ "npx", "uvx" ]
+```
+
+### Setup
+​
+#### 1. Register Connection Handlers
+To use MCP in your Chainlit application, you need to implement the on_mcp_connect handler. The on_mcp_disconnect handler is optional but recommended for proper cleanup.
+```python
+import chainlit as cl
+from mcp import ClientSession
+
+@cl.on_mcp_connect
+async def on_mcp_connect(connection, session: ClientSession):
+    """Called when an MCP connection is established"""
+    # Your connection initialization code here
+    # This handler is required for MCP to work
+    
+@cl.on_mcp_disconnect
+async def on_mcp_disconnect(name: str, session: ClientSession):
+    """Called when an MCP connection is terminated"""
+    # Your cleanup code here
+    # This handler is optional
+```
+
+![chainlit mcp](images/chainlit_mcp.png)
+
+
+#### 2. Client Configuration
+The client needs to provide the connection details through the Chainlit interface. This includes:
+
+- Connection name (unique identifier)
+- Client type (sse or stdio)
+- For SSE: URL endpoint
+- For stdio: Full command (e.g., npx your-tool-package or uvx your-tool-package)
+
+
+
+### Working with MCP Connections
+​
+Retrieving Available Tools
+Upon connection, you can discover the available tools provided by the MCP service:
+
+```python
+@cl.on_mcp_connect
+async def on_mcp(connection, session: ClientSession):
+    # List available tools
+    result = await session.list_tools()
+    
+    # Process tool metadata
+    tools = [{
+        "name": t.name,
+        "description": t.description,
+        "input_schema": t.inputSchema,
+    } for t in result.tools]
+    
+    # Store tools for later use
+    mcp_tools = cl.user_session.get("mcp_tools", {})
+    mcp_tools[connection.name] = tools
+    cl.user_session.set("mcp_tools", mcp_tools)
+```
+
+### Executing Tools
+You can execute tools using the MCP session:
+```python
+@cl.step(type="tool") 
+async def call_tool(tool_use):
+    tool_name = tool_use.name
+    tool_input = tool_use.input
+    
+    # Find appropriate MCP connection for this tool
+    mcp_name = find_mcp_for_tool(tool_name)
+    
+    # Get the MCP session
+    mcp_session, _ = cl.context.session.mcp_sessions.get(mcp_name)
+    
+    # Call the tool
+    result = await mcp_session.call_tool(tool_name, tool_input)
+    
+    return result
+```
+
+
+### Integrating with LLMs
+MCP tools can be seamlessly integrated with LLMs that support tool calling:
+```python
+async def call_model_with_tools():
+    # Get tools from all MCP connections
+    mcp_tools = cl.user_session.get("mcp_tools", {})
+    all_tools = [tool for connection_tools in mcp_tools.values() for tool in connection_tools]
+    
+    # Call your LLM with the tools
+    response = await your_llm_client.call(
+        messages=messages,
+        tools=all_tools
+    )
+    
+    # Handle tool calls if needed
+    if response.has_tool_calls():
+        # Process tool calls
+        pass
+        
+    return response
+```
+
+
+
 
 ---
 ## Demo scripts
