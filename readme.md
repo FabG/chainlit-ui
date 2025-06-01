@@ -111,10 +111,49 @@ async def set_starters():
         ]
 # ...
 ```
-This is how this shows:
+This is how the 4 `Starter` above look like:
 ![starters](images/chainlit_starters.png)
 
 
+## Message
+A Message is a piece of information that is sent from the user to an assistant and vice versa. Coupled with life cycle hooks, they are the building blocks of a chat.
+
+A message has a content, a timestamp and cannot be nested.
+
+​### Example: Reply to a user message
+Lets create a simple assistant that replies to a user message with a greeting.
+```python
+import chainlit as cl
+
+@cl.on_message
+async def on_message(message: cl.Message):
+    response = f"Hello, you just sent: {message.content}!"
+    await cl.Message(response).send()
+```
+
+
+### Chat Context
+Since LLMs are stateless, you will often have to accumulate the messages of the current conversation in a list to provide the full context to LLM with each query.
+
+You could do that manually with the `user_session`. However, Chainlit provides a built-in way to do this:
+```python
+import chainlit as cl
+
+@cl.on_message
+async def on_message(message: cl.Message):
+    # Get all the messages in the conversation in the OpenAI format
+    print(cl.chat_context.to_openai())
+
+    # Send the response
+    response = f"Hello, you just sent: {message.content}!"
+    await cl.Message(response).send()
+```
+
+Every message sent or received will be automatically accumulated in cl.chat_context. You can then use `cl.chat_context.to_openai()` to get the conversation in the OpenAI format and feed it to the LLM.
+
+
+
+```
 ---
 ## Demo scripts
 
@@ -136,3 +175,5 @@ Input and Output:
 - **Discord Community:** Join our friendly [Chainlit Discord](https://discord.gg/k73SQ3FyUh) to ask questions, share your projects, and connect with other developers! 💬
 
 - [Chainlit Cookbook](https://github.com/Chainlit/cookbook)
+- [AWS Foundational LLM Chat with Chainlit](https://github.com/aws-samples/foundational-llm-chat)
+- [Building a chat app with chainlit and Bedrock](https://www.linkedin.com/pulse/building-chat-application-chainlit-amazon-bedrock-chris-kaspar-jq56c/)
